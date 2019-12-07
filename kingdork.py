@@ -7,6 +7,8 @@ import requests
 import urllib
 import random
 import string
+import json
+import csv
 
 from bs4 import BeautifulSoup
 
@@ -16,6 +18,9 @@ NAME = 'kingdork'
 _GLOBAL_NAME = 'google_search'
 _DATETIME = datetime.datetime.now().strftime("%Y%m%d")
 configfile = 'conf/config.ini'
+_JSON='json'
+_CSV='csv'
+_SCREEN = 'screen'
 google_base = 'https://www.google.com'
 google_search = '/search?q='
 logger = logging.getLogger(__name__)
@@ -112,7 +117,16 @@ class data_found:
             self.next_page = result.find('div', attrs={'class': 'ZINbbc xpd O9g5cc uUPGi BmP5tf'}).a['href']
         except:
             self.next_page = None
-        # -----------------------------------------------------------------------------------------------------------------------
+
+    def keys (self):
+        return ['link','title', 'description','date']
+
+    def data_found (self):
+        _data= []
+        for i in range(0, self.current):
+            _data.append(self.show(i))
+        return _data
+# -----------------------------------------------------------------------------------------------------------------------
 def randomString(stringLength=8):
     letters = string.ascii_lowercase
     return ''.join(random.sample(letters, stringLength))
@@ -135,19 +149,23 @@ def options():
     parser = argparse.ArgumentParser(
         prog=NAME,
         usage="python %(prog)s [options]",
-        description='Another dorking tool',
-        epilog='comments > /dev/null'
+        description='Another dorking tool. This is only a proof of concept to develop an a right tool. Just a hobby',
+        epilog='never mind the bollock, if you don\'t like this, forget this.\n comments>/dev/null'
     )
     # group_action = parser.add_mutually_exclusive_group()
     # group_credentials = parser.add_argument_group()
     parser.add_argument('--verbose', "-v", action='store_true', help='Verbose')
-    parser.add_argument('--logging', '-log', action='store_true', help='logging activity')
+    #parser.add_argument('--logging', '-log', action='store_true', help='logging activity')
     parser.add_argument('--config', "-c", type=str, help='Config file')
-    parser.add_argument('--numpages', "-n", type=int, help='number of pages to manage')
+    parser.add_argument('--numpages', "-n", type=int, help='number of pages to manage', default=1)
     parser.add_argument('--dorkfile', "-d", type=str, help='file with expressions')
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('--json', '-json', action='store_true', help='Save data in json format')
+    group.add_argument('--csv', '-csv', action='store_true', help='Save data in CSV format')
     args = parser.parse_args()
 
     if args.config:
+        print ("[{0}]".format(args.config))
         _config = config(args.config)
     else:
         _config = config()
@@ -162,6 +180,14 @@ def options():
     else:
         _config['VERBOSE'] = False
     _config['search_string'] = 'test'
+
+    if args.json :
+        _config['OUTPUT'] = _JSON
+    elif args.csv :
+        _config['OUTPUT'] = _CSV
+    else:
+        _config['OUTPUT'] = _SCREEN
+
 
     _url = google_base + google_search + _config['search_string']
 
@@ -206,10 +232,12 @@ def showfiles(files):
         resultado = cd.div_SECTION(html)
         for i in resultado:
             cd.div_DATA(i)
-    cd.print()
+    manageoutput(_config, cd)
 def loop(_config, _url, loop=1):
     cont = 0
     files = []
+    if not os.path.exists(_config['path']['tmp']):
+        os.mkdir(_config['path']['tmp'])
     while cont < loop:
         logger.info('count : {0}'.format(cont))
         cont += 1
@@ -227,6 +255,39 @@ def deletefiles (files):
     for i in files:
         os.remove(i)
         logger.info('{0} deleted !!!'.format(i))
+def manageoutput (_config, _data):
+    def filename (_config) :
+        _TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        return _TIMESTAMP+"_"+_GLOBAL_NAME
+    if not 'OUTPUT' in _config:
+        if _config['VERBOSE']:
+            logger.debug('screen output')
+        _data.print()
+    else:
+        if not os.path.exists(_config['path']['data']):
+            os.mkdir(_config['path']['data'])
+            logger.info('Outout directory created :{0}'.format(config['path']['data']))
+        name = _config['path']['data']+"/"+filename(_config)
+        if _config['OUTPUT'] == _JSON:
+            name+=".json"
+            if _config['VERBOSE']:
+                logger.debug('screen output')
+            logger.info('Writing data in {0}'.format(name))
+            with open(name, 'w', encoding='utf8') as json_file:
+                json.dump(_data.data, json_file, ensure_ascii=False)
+        elif _config['OUTPUT'] == _CSV:
+            name+=".csv"
+            logger.info('Writing data in {0}'.format(name))
+            if _config['VERBOSE']:
+                logger.debug('Keys found:{0}'.format(_data.keys()))
+            csv_file = csv.writer(open(name, 'w'))
+            csv_file.writerow(_data.keys())
+            for row in _data.data_found():
+                _csv_data = []
+                for key in _data.keys():
+                    print ("{}".format(row[key]))
+                    _csv_data.append(row[key])
+                csv_file.writerow(_csv_data)
 
 if __name__ == "__main__":
     dt = datetime.datetime.now()
@@ -248,6 +309,7 @@ if __name__ == "__main__":
         showfiles(files)
         deletefiles(files)
     else:
+
         files = loop(_config, _url, _config['numpages'])
         showfiles(files)
         deletefiles(files)
