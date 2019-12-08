@@ -37,6 +37,7 @@ optional arguments:
                         search in social media ie: twitter
   --hashtag HASHTAG, -t HASHTAG
                         search hashtags
+  --dontdelete, -dd     keep tmp files, to use with --readfile
   --json, -json         Save data in json format
   --csv, -csv           Save data in CSV format
   --dorkfile DORKFILE, -df DORKFILE
@@ -44,12 +45,11 @@ optional arguments:
   --readfile READFILE, -f READFILE
                         file to check. When something doesn'n work, check the
                         file
-  --hour HOUR, -u HOUR  Requests results from past hour
-  --day DAY, -d DAY     Requests results from past day
-  --week WEEK, -w WEEK  Requests results from past week
-  --month MONTH, -m MONTH
-                        Requests results from month
-  --year YEAR, -y YEAR  Requests results from years
+  --hour, -u            Requests results from past hour
+  --day, -d             Requests results from past day
+  --week, -w            Requests results from past week
+  --month, -m           Requests results from past month
+  --year, -y            Requests results from past year
 
 group:
   --initialDate INITIALDATE, -id INITIALDATE
@@ -59,6 +59,7 @@ group:
 
 never mind the bollocks, if you don't like this, forget this.
 comments>/dev/null
+
 
 ```
 
