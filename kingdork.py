@@ -224,11 +224,11 @@ def options():
                         help='Final date  - format YYYY-MM-DD')
 
     group4 = parser.add_mutually_exclusive_group()
-    group4.add_argument('--hour', "-u", type=int, help='Requests results from past hour')
-    group4.add_argument('--day', "-d", type=int, help='Requests results from past day')
-    group4.add_argument('--week', "-w", type=int, help='Requests results from past week')
-    group4.add_argument('--month', "-m", type=int, help='Requests results from month')
-    group4.add_argument('--year', "-y", type=int, help='Requests results from years')
+    group4.add_argument('--hour', "-u", action='store_true', help='Requests results from past hour')
+    group4.add_argument('--day', "-d", action='store_true', help='Requests results from past day')
+    group4.add_argument('--week', "-w", action='store_true', help='Requests results from past week')
+    group4.add_argument('--month', "-m", action='store_true', help='Requests results from past month')
+    group4.add_argument('--year', "-y", action='store_true', help='Requests results from past year')
 
     args = parser.parse_args()
 
