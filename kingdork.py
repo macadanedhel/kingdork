@@ -9,6 +9,7 @@ import random
 import string
 import json
 import csv
+import pprint
 
 from bs4 import BeautifulSoup
 
@@ -23,7 +24,8 @@ _CSV='csv'
 _SCREEN = 'screen'
 google_base = 'https://www.google.com'
 google_search = '/search?q='
-logger = logging.getLogger(__name__)
+
+logger = logging.getLogger(NAME)
 logger.setLevel(logging.INFO)
 
 ch = logging.StreamHandler()
@@ -197,7 +199,7 @@ def options():
 
 
     parser.add_argument('--verbose', "-v", action='store_true', help='Verbose')
-    #parser.add_argument('--logging', '-log', action='store_true', help='logging activity')
+    parser.add_argument('--logging', '-log', action='store_true', help='logging activity')
     parser.add_argument('--config', "-c", type=str, help='Config file')
     parser.add_argument('--numpages', "-n", type=int, help='number of pages to manage', default=1)
     parser.add_argument('--language', "-l", type=str, help='file with expressions')
@@ -208,6 +210,8 @@ def options():
     parser.add_argument('--socialmedia', "-sm", type=str, help='search in social media ie: twitter')
     parser.add_argument('--hashtag', "-t", type=str, help='search hashtags')
     parser.add_argument('--dontdelete', "-dd", action='store_true', help='keep tmp files, to use with --readfile')
+    parser.add_argument('--stdout', "-stdout", action='store_true', help='shows json or csv output in stdout')
+
 
     group1 = parser.add_mutually_exclusive_group()
     group1.add_argument('--json', '-json', action='store_true', help='Save data in json format')
@@ -231,6 +235,11 @@ def options():
     group4.add_argument('--year', "-y", action='store_true', help='Requests results from past year')
 
     args = parser.parse_args()
+    if args.logging:
+        if not os.path.exists(_config['path']['log']):
+            os.mkdir(_config['path']['log'])
+        name= _config['path']['log'] +"/{0}_{1}.log".format(_DATETIME, NAME)
+        logging.basicConfig(filename=name, filemode='a', format='%(name)s - %(levelname)s - %(message)s')
 
     if args.config:
         logger.info("Getting data from configuration file {0}".format(args.config))
@@ -261,6 +270,10 @@ def options():
         _config['OUTPUT'] = _CSV
     else:
         _config['OUTPUT'] = _SCREEN
+
+    if args.stdout :
+        _config['OUTPUT_AUX'] = _SCREEN
+
 
     if args.language :
         if args.language in _config['google-lang']:
@@ -314,6 +327,7 @@ def options():
         _config['DONTDELETE'] = True
     else:
         _config['DONTDELETE'] = False
+
 
     return _config, _url
 
@@ -407,6 +421,8 @@ def manageoutput (_config, _data):
             logger.info('Writing data in {0}'.format(name))
             with open(name, 'w', encoding='utf8') as json_file:
                 json.dump(_data.data, json_file, ensure_ascii=False)
+            if _config['OUTPUT_AUX']:
+                pprint.pprint(_data.data)
         elif _config['OUTPUT'] == _CSV:
             name+=".csv"
             logger.info('Writing data in {0}'.format(name))
@@ -414,11 +430,15 @@ def manageoutput (_config, _data):
                 logger.debug('Keys found:{0}'.format(_data.keys()))
             csv_file = csv.writer(open(name, 'w'))
             csv_file.writerow(_data.keys())
+            if _config['OUTPUT_AUX']:
+                print (_data.keys())
             for row in _data.data_found():
                 _csv_data = []
                 for key in _data.keys():
                     _csv_data.append(row[key])
                 csv_file.writerow(_csv_data)
+                if _config['OUTPUT_AUX']:
+                    print(_csv_data)
 
 if __name__ == "__main__":
     dt = datetime.datetime.now()

@@ -21,6 +21,7 @@ tool. Just a hobby
 optional arguments:
   -h, --help            show this help message and exit
   --verbose, -v         Verbose
+  --logging, -log       logging activity
   --config CONFIG, -c CONFIG
                         Config file
   --numpages NUMPAGES, -n NUMPAGES
@@ -38,6 +39,7 @@ optional arguments:
   --hashtag HASHTAG, -t HASHTAG
                         search hashtags
   --dontdelete, -dd     keep tmp files, to use with --readfile
+  --stdout, -stdout     shows json or csv output in stdout
   --json, -json         Save data in json format
   --csv, -csv           Save data in CSV format
   --dorkfile DORKFILE, -df DORKFILE
@@ -59,9 +61,12 @@ group:
 
 never mind the bollocks, if you don't like this, forget this.
 comments>/dev/null
-
-
 ```
+
+You can use quotes to use complex sentences with google operators, ie:
+``` "pass|contraseña|contrasena|username|apikey|token|config|connection|id_rsa|hash+filetype:txt+inurl:(sitio1|sitio2)" ```
+and silent the script output redirecting to /dev/null ... if you use json or csv plus stdout, you can use kapow
+ 
 
 ## To Do
 [CSE: list](https://developers.google.com/custom-search/v1/cse/list)
