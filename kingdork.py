@@ -298,6 +298,8 @@ def options():
     if args.site and args.query:
         _config['search_string'] += " site:"+args.site
 
+    if 'key' in _config['identity'] and _config['identity']['key'] != 'empty':
+        _config['search_string'] += "&key=" + _config['identity']['key']
     _url = google_base + google_search + _config['search_string']
 
 
