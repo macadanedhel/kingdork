@@ -14,7 +14,7 @@ import pprint
 from bs4 import BeautifulSoup
 
 __author__ = 'mac'
-__version__ = '1.0.0'
+__version__ = '1.0.1'
 NAME = 'kingdork'
 _GLOBAL_NAME = 'google_search'
 _DATETIME = datetime.datetime.now().strftime("%Y%m%d")
@@ -186,6 +186,7 @@ def config(file=None):
             _configdata[i] = dict(Config.items(i))
     else:
         logger.error('File {0} not found'.format(file))
+        exit(-1)
     return _configdata
 
 def options():
@@ -272,7 +273,9 @@ def options():
         _config['OUTPUT'] = _SCREEN
 
     if args.stdout :
-        _config['OUTPUT_AUX'] = _SCREEN
+        _config['OUTPUT_AUX'] = True
+    else:
+        _config['OUTPUT_AUX'] = False
 
 
     if args.language :
@@ -324,9 +327,9 @@ def options():
         exit (0)
 
     if args.dontdelete :
-        _config['DONTDELETE'] = True
+        _config['DELETE'] = False
     else:
-        _config['DONTDELETE'] = False
+        _config['DELETE'] = True
 
 
     return _config, _url
@@ -388,6 +391,7 @@ def loop(_config, _url, loop=1):
         _aux, _file = dork(_config, _url)
         if _aux is None:
             logger.info('Next page not found.')
+            break
         else:
             _url = google_base + _aux
             if _config['VERBOSE']:
@@ -460,12 +464,12 @@ if __name__ == "__main__":
             linecount+=1
             files = loop(_config, _aux, _config['numpages'])
         showfiles(files)
-        if not _config['DONTDELETE']:
+        if _config['DELETE']:
             deletefiles(files)
     else:
         files = loop(_config, _url, _config['numpages'])
         showfiles(files)
-        if not _config['DONTDELETE']:
+        if _config['DELETE']:
             deletefiles(files)
     dt = datetime.datetime.now() - dt
     logger.info('Finished. Elapsed time {0}'.format(dt))
