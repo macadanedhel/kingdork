@@ -205,7 +205,6 @@ def config(file=None):
         Config = configparser.ConfigParser()
         Config.read(file)
         for i in Config.sections():
-            #_configdata[i].update({ j[0]: j[1].split(',') })
             _configdata[i] = dict(Config.items(i))
     else:
         logger.error('File {0} not found'.format(file))
@@ -217,6 +216,8 @@ def config(file=None):
             _configdata['data_downloaded'][i]=False
         else:
             _configdata['data_downloaded'][i]=True
+    for i in _configdata['path']:
+        checkroute (_configdata['path'][i],True)
 
     return _configdata
 
