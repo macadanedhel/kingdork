@@ -10,6 +10,7 @@ import string
 import json
 import csv
 import pprint
+import base64
 
 from bs4 import BeautifulSoup
 
@@ -124,6 +125,14 @@ class data_found:
             # ---- Parte superior
             # [2] webcache
             link =  _content.find('div',{'class','r'}).find_all('a')[0]['href']
+            if link == '#' :
+                link = _content.find('div', {'class', 'r'}).find_all('a')[1]['href']
+                print ("1 - {0}".format(link))
+                link = _content.find('div', {'class', 'r'}).find_all('a')[2]['href']
+                print("2 - {0}".format(link))
+                link = _content.find('div', {'class', 'r'}).find_all('a')
+                print("all - {0}".format(link))
+                exit (0)
             title =  _content.find('div',{'class','r'}).h3.text
             # ---- Parte inferior
             description = _content.find('div', {'class', 's'}).text
@@ -169,25 +178,46 @@ class data_found:
             _data.append(self.show(i))
         return _data
 # -----------------------------------------------------------------------------------------------------------------------
+def returnExpresion (_list)->str:
+    return  "("+'|'.join(map(str,_list))+")"
+
 def randomString(stringLength=8):
     letters = string.ascii_lowercase
     return ''.join(random.sample(letters, stringLength))
 
-def string2search(words):
+def string2search(words:str):
     query = urllib.parse.quote_plus(words)
+
+def checkroute(route:str, create=False):
+    if os.path.exists(route):
+        return True
+    elif create:
+        os.mkdir(route)
+        return True
+    else:
+        return False
 
 def config(file=None):
     _configdata = {}
     if file is None:
         file = configfile
-    if os.path.exists(file):
+    if checkroute(file, False):
         Config = configparser.ConfigParser()
         Config.read(file)
         for i in Config.sections():
+            #_configdata[i].update({ j[0]: j[1].split(',') })
             _configdata[i] = dict(Config.items(i))
     else:
         logger.error('File {0} not found'.format(file))
         exit(-1)
+    for i in _configdata['extensions']:
+        _configdata['extensions'][i]=_configdata['extensions'][i].split(',')
+    for i in _configdata['data_downloaded']:
+        if _configdata['data_downloaded'][i]=='False':
+            _configdata['data_downloaded'][i]=False
+        else:
+            _configdata['data_downloaded'][i]=True
+
     return _configdata
 
 def options():
@@ -214,6 +244,12 @@ def options():
     parser.add_argument('--dontdelete', "-dd", action='store_true', help='keep tmp files, to use with --readfile')
     parser.add_argument('--stdout', "-stdout", action='store_true', help='shows json or csv output in stdout')
 
+    parser.add_argument('--document', "-doc", action='store_true', help='search documents')
+    parser.add_argument('--markup', "-mkp", action='store_true', help='search markup language')
+    parser.add_argument('--code', "-code", action='store_true', help='search code')
+    parser.add_argument('--video', "-vdo", action='store_true', help='search video')
+    parser.add_argument('--locationdata', "-loc", action='store_true', help='search location data')
+    parser.add_argument('--picture', "-pic", action='store_true', help='search picture')
 
     group1 = parser.add_mutually_exclusive_group()
     group1.add_argument('--json', '-json', action='store_true', help='Save data in json format')
@@ -237,9 +273,17 @@ def options():
     group4.add_argument('--year', "-y", action='store_true', help='Requests results from past year')
 
     args = parser.parse_args()
+
+    if args.query:
+        _config['search_string'] = args.query
+    else:
+        _config['search_string'] = 'test'
+
+
     if args.logging:
-        if not os.path.exists(_config['path']['log']):
-            os.mkdir(_config['path']['log'])
+        if checkroute(_config['path']['log'],True):
+            logger.info("Path ok : {0}".format(_config['path']['log']))
+
         name= _config['path']['log'] +"/{0}_{1}.log".format(_DATETIME, NAME)
         logging.basicConfig(filename=name, filemode='a', format='%(name)s - %(levelname)s - %(message)s')
 
@@ -256,10 +300,6 @@ def options():
         ch.setLevel(logging.DEBUG)
     else:
         _config['VERBOSE'] = False
-    if args.query:
-        _config['search_string'] = args.query
-    else:
-        _config['search_string'] = 'test'
 
     if args.readfile and not os.path.exists(args.readfile):
         logger.error('File {0} not found'.format(args.readfile))
@@ -277,6 +317,37 @@ def options():
         _config['OUTPUT_AUX'] = True
     else:
         _config['OUTPUT_AUX'] = False
+
+    if args.document:
+        if checkroute(_config['path']['data']+"/"+_config['path']['document'], True):
+            logger.info("Path ok : {0}".format(_config['path']['data']+"/"+_config['path']['document']))
+        _config['search_string'] += " "+ returnExpresion (_config['extensions']['document'])
+        _config['data_downloaded']['document']=True
+    if args.markup:
+        if checkroute(_config['path']['data']+"/"+_config['path']['markup'], True):
+            logger.info("Path ok : {0}".format(_config['path']['data']+"/"+_config['path']['markup']))
+        _config['search_string'] += " "+ returnExpresion(_config['extensions']['markup'])
+        _config['data_downloaded']['markup'] = True
+    if args.code:
+        if checkroute(_config['path']['data']+"/"+_config['path']['code'], True):
+            logger.info("Path ok : {0}".format(_config['path']['data']+"/"+_config['path']['code']))
+        _config['search_string'] += " "+ returnExpresion(_config['extensions']['code'])
+        _config['data_downloaded']['code'] = True
+    if args.video:
+        if checkroute(_config['path']['data']+"/"+_config['path']['video'], True):
+            logger.info("Path ok : {0}".format(_config['path']['data']+"/"+_config['path']['video']))
+        _config['search_string'] += " "+ returnExpresion(_config['extensions']['video'])
+        _config['data_downloaded']['video'] = True
+    if args.locationdata:
+        if checkroute(_config['path']['data']+"/"+_config['path']['location'], True):
+            logger.info("Path ok : {0}".format(_config['path']['data']+"/"+_config['path']['location']))
+        _config['search_string'] += " "+ returnExpresion(_config['extensions']['location'])
+        _config['data_downloaded']['location'] = True
+    if args.picture:
+        if checkroute(_config['path']['data']+"/"+_config['path']['picture'], True):
+            logger.info("Path ok : {0}".format(_config['path']['data']+"/"+_config['path']['picture']))
+        _config['search_string'] += " "+ returnExpresion(_config['extensions']['picture'])
+        _config['data_downloaded']['picture'] = True
 
 
     if args.language :
@@ -344,7 +415,7 @@ def dork(_config, _url):
     response = requests.get(_url, headers=ua)
     # if _config['VERBOSE']:
     #     logger.debug("Status code: {0} encoding: {1}".format(response['status_code'],response['encoding']))
-    aux = "/{0}_{1}_{2}.html".format(_DATETIME, _config['search_string'], randomString())
+    aux = "/{0}_{1}_{2}.html".format(_DATETIME, base64.b64encode( _config['search_string'].encode()).decode("utf-8") , randomString())
     try :
         aux = re.sub('/','',aux)
     except:
@@ -362,37 +433,45 @@ def dork(_config, _url):
     return _url, name
 
 def files2open(filename, _encoding='ISO-8859-1'):
-    logger.info('Openning file  {0}'.format(filename))
-    f = open(filename, 'r', encoding=_encoding)
-    doc = f.read()
-    f.close()
-    return doc
+    type=filename.split('.')[len(filename.split('.'))-1]
+    if type in ['csv']:
+        doc=  csv.DictReader(open(filename, mode='r'))
+    else :
+        f = open(filename, 'r', encoding=_encoding)
+        doc = f.read()
+        f.close()
+    return doc, type
 
-def showfiles(files):
+def showfiles(_config, files):
     cd = data_found()
+    if _config['VERBOSE']:
+        logger.debug("Files: {0}".find(str(files)))
     for i in files:
-        doc =  files2open(i)
+        if _config['VERBOSE']:
+            logger.debug("Extracting data from: {0}".find(i))
+        doc, type =  files2open(i)
         html = BeautifulSoup(doc, "html.parser")
         found = cd.items_found(html)
         if found:
             logger.info(found)
         resultado = cd.div_SECTION(html)
-        for i in resultado:
-            cd.div_DATA(i)
-    manageoutput(_config, cd)
+        for k in resultado:
+            cd.div_DATA(k)
+    file=manageoutput(_config, cd)
+    return file
 
 def loop(_config, _url, loop=1):
     cont = 0
     files = []
-    if not os.path.exists(_config['path']['tmp']):
-        os.mkdir(_config['path']['tmp'])
+    if checkroute(_config['path']['tmp'], True):
+        logger.info("Path ok : {0}".format(_config['path']['tmp']))
     while cont < loop:
         logger.info('count : {0}'.format(cont))
         cont += 1
         _aux, _file = dork(_config, _url)
         if _aux is None:
             logger.info('Next page not found.')
-            break
+            cont+=loop
         else:
             _url = google_base + _aux
             if _config['VERBOSE']:
@@ -406,7 +485,68 @@ def deletefiles (files):
         os.remove(i)
         logger.info('{0} deleted !!!'.format(i))
 
+def downloaded_data (_config, file):
+    for extension in _config['extensions']:
+        if _config['VERBOSE']:
+            logger.debug("Checking extension 4 download: {0}".format(extension))
+        if _config['data_downloaded'][extension]:
+            if _config['VERBOSE']:
+                logger.debug("Checking extension {0} in {1}".format(extension, file))
+            download_data(_config, extension, file)
+
+def download_data (_config, _key, name):
+    if _config['VERBOSE']:
+        logger.debug("Getting data from {0}".format(name))
+    if os.path.exists(name):
+        doc, type = files2open(name)
+    else:
+        logger.error ('File {0} not found'.format(name))
+    if type in 'csv':
+        for i in doc:
+            if _config['VERBOSE']:
+                logger.debug ("Downloading data from {0}".format(i['link']))
+            filename=i['link'].split('/')[len(i['link'].split('/'))-1]
+            try:
+                type=filename.split('.')[len(filename.split('.'))-1]
+            except:
+                type=filename
+            logger.info ("Document to download : [{0}], filetype :({1})".format(filename,type))
+            _DONWLOAD=_config['path']['data']+"/"
+            if type in _config['extensions'][_key]:
+                _DONWLOAD+=_config['path'][_key]
+                if checkroute(_DONWLOAD, True) and _config['VERBOSE']:
+                        logger.debug("Path {0} OK".format(_DONWLOAD))
+                _aux=_DONWLOAD+"/"+filename
+                if not os.path.exists(_aux):
+                    ua = {
+                        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36'}
+                    response = requests.get(i['link'], headers=ua)
+                    if _config['VERBOSE']:
+                        mgmt_response(response.headers)
+                    logger.info("File {0} downloaded".format(_aux))
+                    open(_aux, 'wb').write(response.content)
+                    logger.info("File {0} DOWNLOADED !!!".format(_aux))
+                else:
+                    if _config['VERBOSE']:
+                        logger.debug("File {0} exists yet !!!!".format(_aux))
+            else:
+                ua = {
+                    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36'}
+                response = requests.get(i['link'], headers=ua)
+                if _config['VERBOSE']:
+                    mgmt_response(response.headers)
+                logger.info("File {0} downloaded".format(_aux))
+                type = response.headers['Content-Type'].split('/')[len(response.headers['Content-Type'].split('/'))-1]
+                if type in _config['extensions'][_key]:
+                    _DONWLOAD += _config['path'][_key]
+                    _aux = _DONWLOAD + "/" + re.sub('"','',response.headers['Content-Disposition'].split('=')[1])
+                    open(_aux, 'wb').write(response.content)
+                    logger.info("File {0} DOWNLOADED !!!".format(_aux))
+                else:
+                    logger.error("type: {0} not in {1}".format(type,_config['extensions'][_key] ))
+
 def manageoutput (_config, _data):
+    name = ""
     def filename (_config) :
         _TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         return _TIMESTAMP+"_"+_GLOBAL_NAME
@@ -415,9 +555,9 @@ def manageoutput (_config, _data):
             logger.debug('screen output')
         _data.print()
     else:
-        if not os.path.exists(_config['path']['data']):
-            os.mkdir(_config['path']['data'])
-            logger.info('Outout directory created :{0}'.format(config['path']['data']))
+        if checkroute(_config['path']['data'],True):
+            logger.info("Path ok : {0}".format(_config['path']['data']))
+
         name = _config['path']['data']+"/"+filename(_config)
         if _config['OUTPUT'] == _JSON:
             name+=".json"
@@ -436,7 +576,7 @@ def manageoutput (_config, _data):
             csv_file = csv.writer(open(name, 'w'))
             csv_file.writerow(_data.keys())
             if _config['OUTPUT_AUX']:
-                print (_data.keys())
+                print(_data.keys())
             for row in _data.data_found():
                 _csv_data = []
                 for key in _data.keys():
@@ -444,6 +584,11 @@ def manageoutput (_config, _data):
                 csv_file.writerow(_csv_data)
                 if _config['OUTPUT_AUX']:
                     print(_csv_data)
+    return name
+
+def mgmt_response (headers):
+    for i in headers:
+        logger.debug ("[{0}]: {1}".format(i,headers[i]))
 
 if __name__ == "__main__":
     dt = datetime.datetime.now()
@@ -452,7 +597,8 @@ if __name__ == "__main__":
     if _config['VERBOSE']:
         logger.debug('config: {0}'.format(_config))
     if 'FILE' in _config:
-        showfiles([_config['FILE']])
+        showfiles(_config, [_config['FILE']])
+        downloaded_data(_config, _config['FILE'])
     elif 'dorkfile' in  _config:
         doc = files2open (_config['dorkfile'],'utf-8')
         linecount=0
@@ -464,12 +610,15 @@ if __name__ == "__main__":
             _config['search_string']="{0}_line_{1}".format( name,linecount)
             linecount+=1
             files = loop(_config, _aux, _config['numpages'])
-        showfiles(files)
+        file=showfiles(_config, files)
+        downloaded_data(_config, file)
         if _config['DELETE']:
             deletefiles(files)
+
     else:
         files = loop(_config, _url, _config['numpages'])
-        showfiles(files)
+        file=showfiles(_config, files)
+        downloaded_data(_config, file)
         if _config['DELETE']:
             deletefiles(files)
     dt = datetime.datetime.now() - dt

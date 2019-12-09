@@ -40,6 +40,12 @@ optional arguments:
                         search hashtags
   --dontdelete, -dd     keep tmp files, to use with --readfile
   --stdout, -stdout     shows json or csv output in stdout
+  --document, -doc      search documents
+  --markup, -mkp        search markup language
+  --code, -code         search code
+  --video, -vdo         search video
+  --locationdata, -loc  search location data
+  --picture, -pic       search picture
   --json, -json         Save data in json format
   --csv, -csv           Save data in CSV format
   --dorkfile DORKFILE, -df DORKFILE
@@ -114,6 +120,32 @@ kingdork - INFO - tmp/20191209_security incidents report 2019 filetype:pdf &lr=l
 kingdork - INFO - Finished. Elapsed time 0:00:18.300802
 ```
 
+With the options: 
+- document 
+- markup 
+- code 
+- video
+- location 
+- picture 
+
+will download the next extensions: 
+
+|option|extensions to download|
+|------|----------------------|
+|document | pdf,ps,xls,xlsx,ppt,pptx,doc,docx,odp,ods,odt,rtf,hwp,txt,tex,text|
+|Markup | html,htm,wml,wap,xml,yml,yaml|
+|code | bas,c,cc,cpp,cxx,h,hpp,cs,java,pl,py|
+|video| mpg,avi,swf,webm,mkv,flv,vobmpg,mp2,mpeg,mpe,mpv,mov,qt,wmv,rm,rmvb,m4v,3gp,f4v,f4p,f4a,f4b|
+|location | kml,kmz,gpx|
+|picture| svg,jpg,jpeg,gif,png,tif,tiff,eps,ai,psd,epsai,indd,raw|
+
+```
+2019-12-09 22:28:03,294 - kingdork - INFO - download_data - Document to download : [accenture-2019-cost-of-cybercrime-study-final.pdf], filetype :(pdf)
+2019-12-09 22:28:03,294 - kingdork - INFO - download_data - Document to download : [security-report-2019.pdf], filetype :(pdf)
+2019-12-09 22:28:03,294 - kingdork - INFO - download_data - Document to download : [EN-Cybersicherheit_Bericht_2019.pdf], filetype :(pdf)
+2019-12-09 22:28:03,294 - kingdork - INFO - download_data - Document to download : [2019-Cloud-Security-Report-ISC2.ashx?la=en&hash=06133FF277FCCFF720FC8B96DF505CA66A7CE565], filetype :(ashx?la=en&hash=06133FF277FCCFF720FC8B96DF505CA66A7CE565)
+2019-12-09 22:28:06,701 - kingdork - INFO - download_data - File output/doc/EN-Cybersicherheit_Bericht_2019.pdf downloaded
+```
 ---
 
 ## To Do
