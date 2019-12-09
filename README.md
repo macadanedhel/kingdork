@@ -69,10 +69,14 @@ never mind the bollocks, if you don't like this, forget this.
 comments>/dev/null
 ```
 
+
 You can use quotes to use complex sentences with google operators, ie:
+
 ``` "pass|contraseña|contrasena|username|apikey|token|config|connection|id_rsa|hash+filetype:txt+inurl:(sitio1|sitio2)" ```
+
 and silent the script output redirecting to /dev/null ... if you use json or csv plus stdout, you can use kapow
---- 
+
+
 Example... if we want any documents about something :
 
 ```  python ./kingdork.py -n 10 -q "security incidents report 2019 filetype:pdf " -l english -csv -log 2>/dev/null ```
