@@ -61,12 +61,13 @@ class data_found:
     def _plus(self):
         self.current += 1
 
-    def add_data(self, _link=None, _title=None, _description=None, _date=None):
+    def add_data(self, _link=None, _title=None, _description=None, _date=None, _file=None):
         self.data[self.current] = {
             'link': _link,
             'title': _title,
             'description': _description,
-            'date': _date
+            'date': _date,
+            'file': _file
         }
         self._plus()
 
@@ -141,7 +142,7 @@ class data_found:
             pass
         return link, title, description, date
 
-    def div_DATA(self, _div):
+    def div_DATA(self, _div, file = None):
         link = ''
         title = ''
         description = ''
@@ -152,7 +153,7 @@ class data_found:
         else :
             link, title, description, date = self.div_DATA_V2(_div)
         if link != '' or title != '' or description != '':
-            self.add_data(link, title, description, date)
+            self.add_data(link, title, description, date, file)
 
     def div_SECTION (self, result):
         resultado = result.find_all('div', attrs={'class': 'ZINbbc'})
@@ -414,8 +415,8 @@ def dork(_config, _url):
     ua = {
         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36'}
     response = requests.get(_url, headers=ua)
-    # if _config['VERBOSE']:
-    #     logger.debug("Status code: {0} encoding: {1}".format(response['status_code'],response['encoding']))
+    if _config['VERBOSE']:
+        mgmt_response(response.headers)
     aux = "/{0}_{1}_{2}.html".format(_DATETIME, base64.b64encode( _config['search_string'].encode()).decode("utf-8") , randomString())
     try :
         aux = re.sub('/','',aux)
@@ -447,17 +448,17 @@ def showfiles(_config, files):
     cd = data_found()
     if _config['VERBOSE']:
         logger.debug("Files: {0}".find(str(files)))
-    for i in files:
+    for file in files:
         if _config['VERBOSE']:
-            logger.debug("Extracting data from: {0}".find(i))
-        doc, type =  files2open(i)
+            logger.debug("Extracting data from: {0}".find(file))
+        doc, type =  files2open(file)
         html = BeautifulSoup(doc, "html.parser")
         found = cd.items_found(html)
         if found:
             logger.info(found)
         resultado = cd.div_SECTION(html)
         for k in resultado:
-            cd.div_DATA(k)
+            cd.div_DATA(k,file)
     file=manageoutput(_config, cd)
     return file
 
