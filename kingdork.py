@@ -94,8 +94,8 @@ class data_found:
     def print(self):
         for i in range(0, self.current):
             aux = self.show(i)
-            print("Data [{0}]\n\tTitle: {1}\n\tlink: {2}\n\tdescription: {3}\n\tdate: {4}".format(
-                i, aux['title'], aux['link'], aux['description'], aux['date']
+            print("Data [{0}]\n\tTitle: {1}\n\tlink: {2}\n\tdescription: {3}\n\tdate: {4}\n\tfile: {5}".format(
+                i, aux['title'], aux['link'], aux['description'], aux['date'], aux['file']
             ))
         #print("Next page: {0}".format(self.next_page))
 
@@ -217,7 +217,8 @@ def config(file=None):
             _configdata['data_downloaded'][i]=False
         else:
             _configdata['data_downloaded'][i]=True
-    for i in _configdata['path']:
+
+    for i in ['data','tmp', 'conf', 'log']:
         checkroute (_configdata['path'][i],True)
 
     return _configdata
