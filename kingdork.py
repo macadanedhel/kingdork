@@ -122,7 +122,8 @@ class data_found:
         date = ''
         try:
             # ---- Parte superior
-            link =  _content.find('div',{'class','r'}).find_all('a')[2]['href']
+            # [2] webcache
+            link =  _content.find('div',{'class','r'}).find_all('a')[0]['href']
             title =  _content.find('div',{'class','r'}).h3.text
             # ---- Parte inferior
             description = _content.find('div', {'class', 's'}).text
