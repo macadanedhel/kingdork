@@ -89,7 +89,10 @@ class data_found:
             return self.current - 1
 
     def items_found (self, _div):
-        res =  _div.find('div', attrs={'class': 'appbar'}).text
+        try:
+            res =  _div.find('div', attrs={'class': 'appbar'}).text
+        except:
+            res=""
         if len(res)<=0:
             res = None
         return res
@@ -194,6 +197,21 @@ def checkroute(route:str, create=False):
         return True
     else:
         return False
+
+# def connection (_conn, _url):
+#     ua = {
+#         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36'}
+#     try:
+#         res = _conn.get(_url, headers=ua)
+#     except HTTPError as http_err:
+#         print(f'HTTP error occurred: {http_err}')
+#         exit(0)
+#     except Exception as err:
+#         print(f'Other error occurred: {err}')
+#         exit(0)
+#     except URLError as err:
+#         print(f'URL Error: {err}')
+#         exit(0)
 
 def config(file=None):
     _configdata = {}
@@ -406,12 +424,14 @@ def options():
 
     return _config, _url
 
+#def dork(_config, _url, _conn):
 def dork(_config, _url):
 
     logger.info('Getting data from URL: {0}'.format(_url))
 
     ua = {
         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36'}
+    #response = _conn.get(_url, headers=ua)
     response = requests.get(_url, headers=ua)
     if _config['VERBOSE']:
         mgmt_response(response.headers)
@@ -463,17 +483,19 @@ def showfiles(_config, files):
 def loop(_config, _url, loop=1):
     cont = 0
     files = []
+    #conn = requests.session()
     if checkroute(_config['path']['tmp'], True):
         logger.info("Path ok : {0}".format(_config['path']['tmp']))
     while cont < loop:
         logger.info('count : {0}'.format(cont))
         cont += 1
+        #_aux, _file = dork(_config, _url, conn)
         _aux, _file = dork(_config, _url)
         if _aux is None:
             logger.info('Next page not found.')
             cont+=loop
         else:
-            _url = google_base + _aux
+            _url = google_base + _aux + "&start=" + "".format(cont*10)
             if _config['VERBOSE']:
                 logger.debug('URL returned: {0}'.format(_url))
                 logger.debug('filename returned: {0}'.format(_file))
@@ -495,6 +517,7 @@ def downloaded_data (_config, file):
             download_data(_config, extension, file)
 
 def download_data (_config, _key, name):
+    _conn = requests.session()
     if _config['VERBOSE']:
         logger.debug("Getting data from {0}".format(name))
     if os.path.exists(name):
@@ -520,18 +543,20 @@ def download_data (_config, _key, name):
                 if not os.path.exists(_aux):
                     ua = {
                         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36'}
+                    #response = _conn.get(i['link'], headers=ua)
                     response = requests.get(i['link'], headers=ua)
                     if _config['VERBOSE']:
                         mgmt_response(response.headers)
                     logger.info("File {0} downloaded".format(_aux))
                     open(_aux, 'wb').write(response.content)
-                    logger.info("File {0} DOWNLOADED !!!".format(_aux))
+                    logger.info("File {0} saved !!!".format(_aux))
                 else:
                     if _config['VERBOSE']:
                         logger.debug("File {0} exists yet !!!!".format(_aux))
             else:
                 ua = {
                     'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36'}
+                #response = _conn.get(i['link'], headers=ua)
                 response = requests.get(i['link'], headers=ua)
                 if _config['VERBOSE']:
                     mgmt_response(response.headers)
@@ -539,9 +564,9 @@ def download_data (_config, _key, name):
                 type = response.headers['Content-Type'].split('/')[len(response.headers['Content-Type'].split('/'))-1]
                 if type in _config['extensions'][_key]:
                     _DONWLOAD += _config['path'][_key]
-                    _aux = _DONWLOAD + "/" + re.sub('"','',response.headers['Content-Disposition'].split('=')[1])
+                    _aux = _DONWLOAD + "/" + re.sub('"','',re.sub('=+','=',response.headers['Content-Disposition']).split('=')[1])
                     open(_aux, 'wb').write(response.content)
-                    logger.info("File {0} DOWNLOADED !!!".format(_aux))
+                    logger.info("File {0} saved !!!".format(_aux))
                 else:
                     logger.error("type: {0} not in {1}".format(type,_config['extensions'][_key] ))
 
@@ -577,10 +602,11 @@ def manageoutput (_config, _data):
             csv_file.writerow(_KEYS)
             if _config['OUTPUT_AUX']:
                 print(_KEYS)
-            for row in _data.data_found():
+            for i in range(0, _data.current):
+                aux = _data.show(i)
                 _csv_data = []
                 for key in _KEYS:
-                    _csv_data.append(row[key])
+                    _csv_data.append(aux[key])
                 csv_file.writerow(_csv_data)
                 if _config['OUTPUT_AUX']:
                     print(_csv_data)
@@ -597,12 +623,13 @@ if __name__ == "__main__":
     if _config['VERBOSE']:
         logger.debug('config: {0}'.format(_config))
     if 'FILE' in _config:
-        showfiles(_config, [_config['FILE']])
-        downloaded_data(_config, _config['FILE'])
+        file=showfiles(_config, [_config['FILE']])
+        downloaded_data(_config, file)
     elif 'dorkfile' in  _config:
-        doc = files2open (_config['dorkfile'],'utf-8')
+        doc, type = files2open (_config['dorkfile'],'utf-8')
         linecount=0
         name=_config['dorkfile'].split("/")[len(_config['dorkfile'].split("/"))-1]
+        print (doc)
         for i in doc.split('\n'):
             str = i
             _aux = _url + i
@@ -614,7 +641,6 @@ if __name__ == "__main__":
         downloaded_data(_config, file)
         if _config['DELETE']:
             deletefiles(files)
-
     else:
         files = loop(_config, _url, _config['numpages'])
         file=showfiles(_config, files)
