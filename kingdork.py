@@ -447,6 +447,12 @@ def dork(_config, _url):
     cd = data_found()
     cd.select_next_page(html)
     _url = cd.next_page
+    if _url is None:
+        try:
+            logger.error(html.find(id="infoDiv").text)
+            _url = False
+        except:
+            pass
     if _config['VERBOSE']:
         logger.debug('obtained URL: {0}'.format(_url))
         logger.debug('data saved in file: {0}'.format(name))
@@ -494,6 +500,8 @@ def loop(_config, _url, loop=1):
         if _aux is None:
             logger.info('Next page not found.')
             cont+=loop
+        elif not _aux:
+             exit (0)
         else:
             _url = google_base + _aux + "&start=" + "".format(cont*10)
             if _config['VERBOSE']:
