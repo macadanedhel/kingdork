@@ -568,7 +568,7 @@ def download_data (_config, _key, name):
                 response = requests.get(i['link'], headers=ua)
                 if _config['VERBOSE']:
                     mgmt_response(response.headers)
-                logger.info("File {0} downloaded".format(_aux))
+                #logger.info("File {0} downloaded".format(_aux))
                 type = response.headers['Content-Type'].split('/')[len(response.headers['Content-Type'].split('/'))-1]
                 if type in _config['extensions'][_key]:
                     _DONWLOAD += _config['path'][_key]
