@@ -25,6 +25,8 @@ _CSV='csv'
 _SCREEN = 'screen'
 google_base = 'https://www.google.com'
 google_search = '/search?q='
+_KEYS=['link','title','description','date','file']
+
 
 logger = logging.getLogger(NAME)
 logger.setLevel(logging.INFO)
@@ -53,7 +55,8 @@ class data_found:
                 'link': '',
                 'title': '',
                 'description': '',
-                'date': ''
+                'date': '',
+                'file': ''
             }
         }
         self.next_page = None
@@ -127,13 +130,7 @@ class data_found:
             # [2] webcache
             link =  _content.find('div',{'class','r'}).find_all('a')[0]['href']
             if link == '#' :
-                link = _content.find('div', {'class', 'r'}).find_all('a')[1]['href']
-                print ("1 - {0}".format(link))
-                link = _content.find('div', {'class', 'r'}).find_all('a')[2]['href']
-                print("2 - {0}".format(link))
-                link = _content.find('div', {'class', 'r'}).find_all('a')
-                print("all - {0}".format(link))
-                exit (0)
+                link = _content.find('div', {'class', 'r'}).find_all('a')[3]['href']
             title =  _content.find('div',{'class','r'}).h3.text
             # ---- Parte inferior
             description = _content.find('div', {'class', 's'}).text
@@ -576,13 +573,13 @@ def manageoutput (_config, _data):
             logger.info('Writing data in {0}'.format(name))
             if _config['VERBOSE']:
                 logger.debug('Keys found:{0}'.format(_data.keys()))
-            csv_file = csv.writer(open(name, 'w'))
-            csv_file.writerow(_data.keys())
+            csv_file = csv.writer(open(name, 'w'), delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            csv_file.writerow(_KEYS)
             if _config['OUTPUT_AUX']:
-                print(_data.keys())
+                print(_KEYS)
             for row in _data.data_found():
                 _csv_data = []
-                for key in _data.keys():
+                for key in _KEYS:
                     _csv_data.append(row[key])
                 csv_file.writerow(_csv_data)
                 if _config['OUTPUT_AUX']:
