@@ -23,8 +23,7 @@ configfile = 'conf/config.ini'
 _JSON='json'
 _CSV='csv'
 _SCREEN = 'screen'
-google_base = 'https://www.google.com'
-google_search = '/search?q='
+_SEARCH_EXTENSION = '_search'
 _KEYS=['link','title','description','date','file']
 
 
@@ -64,15 +63,20 @@ class data_found:
     def _plus(self):
         self.current += 1
 
-    def add_data(self, _link=None, _title=None, _description=None, _date=None, _file=None):
-        self.data[self.current] = {
-            'link': _link,
-            'title': _title,
-            'description': _description,
-            'date': _date,
-            'file': _file
-        }
-        self._plus()
+    def add_data(self, _link=None, _title=None, _description=None, _date=None, _file=None, _item=None):
+        if _link is None and _title is None  and _description is None  and _date is None  and _file is None  and not _item is None:
+            self.data[self.current]=_item
+            self._plus()
+        else:
+            self.data[self.current] = {
+                'link': _link,
+                'title': _title,
+                'description': _description,
+                'date': _date,
+                'file': _file
+            }
+            self._plus()
+            self.data['number']=self.current
 
     def show(self, number=False):
         if number is False:
@@ -100,9 +104,12 @@ class data_found:
     def print(self):
         for i in range(0, self.current):
             aux = self.show(i)
-            print("Data [{0}]\n\tTitle: {1}\n\tlink: {2}\n\tdescription: {3}\n\tdate: {4}\n\tfile: {5}".format(
-                i, aux['title'], aux['link'], aux['description'], aux['date'], aux['file']
-            ))
+            for key in aux.keys():
+                print ("\t[{0}]:{1}".format(key,aux[key]))
+            print ("\n")
+            #print("Data [{0}]\n\tTitle: {1}\n\tlink: {2}\n\tdescription: {3}\n\tdate: {4}\n\tfile: {5}".format(
+            #    i, aux['title'], aux['link'], aux['description'], aux['date'], aux['file']
+            #))
         #print("Next page: {0}".format(self.next_page))
 
     def div_DATA_V1 (self, _content):
@@ -236,6 +243,9 @@ def config(file=None):
     for i in ['data','tmp', 'conf', 'log']:
         checkroute (_configdata['path'][i],True)
 
+    _configdata['ENGINE'] = _configdata['search_engine']['google'] + _configdata['search_engine']['google_search']
+    _configdata['CURRENT_ENGINES'] = _configdata['search_engine']['engines'].split(',')
+
     return _configdata
 
 def options():
@@ -261,6 +271,8 @@ def options():
     parser.add_argument('--hashtag', "-t", type=str, help='search hashtags')
     parser.add_argument('--dontdelete', "-dd", action='store_true', help='keep tmp files, to use with --readfile')
     parser.add_argument('--stdout', "-stdout", action='store_true', help='shows json or csv output in stdout')
+    parser.add_argument('--engine', "-e", type=str, help='Engine to use')
+    parser.add_argument('--key', "-k", action='store_true', help='use the key')
 
     parser.add_argument('--document', "-doc", action='store_true', help='search documents')
     parser.add_argument('--markup', "-mkp", action='store_true', help='search markup language')
@@ -292,8 +304,15 @@ def options():
 
     args = parser.parse_args()
 
+    if args.engine:
+        if args.engine in _config['CURRENT_ENGINES']:
+            aux = "" + args.engine + _SEARCH_EXTENSION
+            _config['ENGINE'] = _config['search_engine'][args.engine] + _config['search_engine'][aux]
+        else:
+            logger.error("engine :{} not implemented")
+
     if args.query:
-        _config['search_string'] = args.query
+        _config['search_string'] =  args.query
     else:
         _config['search_string'] = 'test'
 
@@ -404,14 +423,14 @@ def options():
     if args.site and args.query:
         _config['search_string'] += " site:"+args.site
 
-    if 'key' in _config['identity'] and _config['identity']['key'] != 'empty':
-        _config['search_string'] += "&key=" + _config['identity']['key']
-    _url = google_base + google_search + _config['search_string']
+    if 'key' in _config['identity'] and _config['identity']['key'] != 'empty' and args.key and _config['ENGINE'] == _config['search_engine']['google']:
+        _config['search_string'] +=  "&key=" + _config['identity']['key']
+    _url = _config['ENGINE'] + _config['search_string']
 
 
     if args.dorkfile and os.path.exists(args.dorkfile):
         _config['dorkfile'] = args.dorkfile
-        _url = google_base + google_search
+        _url = _config['ENGINE']
     elif args.dorkfile:
         logger.error('File {0} not found'.format(args.dorkfile))
         exit (0)
@@ -424,7 +443,6 @@ def options():
 
     return _config, _url
 
-#def dork(_config, _url, _conn):
 def dork(_config, _url):
 
     logger.info('Getting data from URL: {0}'.format(_url))
@@ -458,6 +476,40 @@ def dork(_config, _url):
         logger.debug('data saved in file: {0}'.format(name))
     return _url, name
 
+def dork_api(_config, _url, count):
+
+    logger.info('Getting data from URL: {0}'.format(_url))
+
+    ua = {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36'}
+    #response = _conn.get(_url, headers=ua)
+    response = requests.get(_url, headers=ua)
+    if _config['VERBOSE']:
+        mgmt_response(response.headers)
+    aux = "/{0}_{1}_{2}.json".format(_DATETIME, base64.b64encode( _config['search_string'].encode()).decode("utf-8") , randomString())
+    try :
+        aux = re.sub('/','',aux)
+    except:
+        pass
+    name = _config['path']['tmp'] + "/"+ aux
+    logger.info('Writting data in: {0}'.format(name))
+    open(name, 'wb').write(response.content)
+    json_data = json.loads(response.text)
+
+    cd = data_found()
+    cd.next_page= count*json_data['queries']['nextPage'][0]['count']
+    #_url = _url + "&start=" + str(cd.next_page)
+    # if _url is None:
+    #     try:
+    #         logger.error(response.text)
+    #         _url = False
+    #     except:
+    #         pass
+    # if _config['VERBOSE']:
+    #     logger.debug('obtained URL: {0}'.format(_url))
+    #     logger.debug('data saved in file: {0}'.format(name))
+    return _config['search_string'], name
+
 def files2open(filename, _encoding='ISO-8859-1'):
     type=filename.split('.')[len(filename.split('.'))-1]
     if type in ['csv']:
@@ -476,34 +528,43 @@ def showfiles(_config, files):
         if _config['VERBOSE']:
             logger.debug("Extracting data from: {0}".find(file))
         doc, type =  files2open(file)
-        html = BeautifulSoup(doc, "html.parser")
-        found = cd.items_found(html)
-        if found:
-            logger.info(found)
-        resultado = cd.div_SECTION(html)
-        for k in resultado:
-            cd.div_DATA(k,file)
+        if type == "html":
+            html = BeautifulSoup(doc, "html.parser")
+            found = cd.items_found(html)
+            if found:
+                logger.info(found)
+            resultado = cd.div_SECTION(html)
+            for k in resultado:
+                cd.div_DATA(k,file)
+        elif type == "json":
+            json_data = json.loads(doc)
+            for item in json_data['items']:
+                cd.add_data(None, None, None,None,None,item)
+
     file=manageoutput(_config, cd)
     return file
 
 def loop(_config, _url, loop=1):
     cont = 0
     files = []
-    #conn = requests.session()
     if checkroute(_config['path']['tmp'], True):
         logger.info("Path ok : {0}".format(_config['path']['tmp']))
     while cont < loop:
         logger.info('count : {0}'.format(cont))
         cont += 1
         #_aux, _file = dork(_config, _url, conn)
-        _aux, _file = dork(_config, _url)
+        _aux = ""
+        if _config['ENGINE'] == _config['search_engine']['google']+_config['search_engine']['google_search']:
+            _aux, _file = dork(_config, _url)
+        else:
+            _aux, _file = dork_api(_config, _url, cont)
         if _aux is None:
             logger.info('Next page not found.')
             cont+=loop
         elif not _aux:
              exit (0)
         else:
-            _url = google_base + _aux + "&start=" + "".format(cont*10)
+            _url = _config['ENGINE'] + _aux + "&start=" + "{0}".format(10*cont)
             if _config['VERBOSE']:
                 logger.debug('URL returned: {0}'.format(_url))
                 logger.debug('filename returned: {0}'.format(_file))
