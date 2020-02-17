@@ -11,6 +11,7 @@ import json
 import csv
 import pprint
 import base64
+import copy
 
 from bs4 import BeautifulSoup
 
@@ -24,7 +25,7 @@ _JSON='json'
 _CSV='csv'
 _SCREEN = 'screen'
 _SEARCH_EXTENSION = '_search'
-_KEYS=['link','title','description','date','file']
+
 
 
 logger = logging.getLogger(NAME)
@@ -42,41 +43,101 @@ logger.addHandler(ch)
 
 # -----------------------------------------------------------------------------------------------------------------------
 class data_found:
-    def __init__(self, name=None):
+    def __init__(self, name=None, _type = None):
         if not name is None:
             self.NAME = name
         else:
             self.NAME = _GLOBAL_NAME
         self.current = 0
-        self.data = {
-            'number': 0,
-            0: {
+        self._struct = None
+        if  _type is None:
+            self.CLASS = 'WEB'
+            self._keys = ['link','title', 'description','date']
+            self._struct = {
                 'link': '',
                 'title': '',
                 'description': '',
                 'date': '',
                 'file': ''
             }
-        }
+            self.data = {
+                'number': 0,
+                0: self._struct
+            }
+
+        else:
+            self.CLASS = 'API'
+            self.keytype = {
+                'strings' : ['kind', 'title', 'htmlTitle', 'link', 'displayLink', 'snippet', 'htmlSnippet', 'cacheId', 'mime',
+                      'formattedUrl', 'htmlFormattedUrl', 'fileFormat'],
+                'objects' : ['labels', 'pagemap', 'labels', 'image']
+            }
+
+            self._keys = self.keytype['strings'] + self.keytype['objects']
+            self._struct = {
+                    'kind': '',
+                    'title': '',
+                    'htmlTitle': '',
+                    'link': '',
+                    'displayLink': '',
+                    'snippet': '',
+                    'htmlSnippet': '',
+                    'cacheId': '',
+                    'mime': '',
+                    'formattedUrl': '',
+                    'htmlFormattedUrl' : '',
+                    'fileFormat' : '',
+                    'labels': '',
+                    'pagemap': '',
+                    'image': ''
+                }
+            self.data = {
+                'number': 0,
+                0: self._struct
+            }
+
+
         self.next_page = None
 
     def _plus(self):
         self.current += 1
+        self.data['number']=self.current
+        self.data[self.current] = copy.copy(self._struct)
+
+    def _changeClass (self, type):
+        self=self.__init__(self.NAME,type)
 
     def add_data(self, _link=None, _title=None, _description=None, _date=None, _file=None, _item=None):
         if _link is None and _title is None  and _description is None  and _date is None  and _file is None  and not _item is None:
-            self.data[self.current]=_item
-            self._plus()
+            if self.CLASS == 'WEB':
+                self.data[self.current]=_item
+            else:
+                for key in self.keys():
+                    if key in self.keytype['strings']:
+                        try:
+                            self.data[self.current][key]=_item[key]
+                        except:
+                            pass
+                    else:
+                        try:
+                            self.data[self.current][key] = str(_item[key])
+                        except:
+                            pass
         else:
-            self.data[self.current] = {
-                'link': _link,
-                'title': _title,
-                'description': _description,
-                'date': _date,
-                'file': _file
-            }
-            self._plus()
-            self.data['number']=self.current
+            if self.CLASS == 'WEB':
+                self.data[self.current] = {
+                    'link': _link,
+                    'title': _title,
+                    'description': _description,
+                    'date': _date,
+                    'file': _file
+                }
+            else:
+                print ("Not implemented yet O_o")
+                print (_item)
+                exit(0)
+        self._plus()
+
 
     def show(self, number=False):
         if number is False:
@@ -177,8 +238,14 @@ class data_found:
             except:
                 self.next_page = None
 
-    def keys (self):
-        return ['link','title', 'description','date']
+    def keys (self, _type=None):
+        if _type is None:
+            return self._keys
+        elif _type in ['objects','strings'] and self.CLASS == 'API':
+            print (self.keytype[_type])
+            return self.keytype[_type]
+        else:
+            return None
 
     def data_found (self):
         _data= []
@@ -272,7 +339,7 @@ def options():
     parser.add_argument('--dontdelete', "-dd", action='store_true', help='keep tmp files, to use with --readfile')
     parser.add_argument('--stdout', "-stdout", action='store_true', help='shows json or csv output in stdout')
     parser.add_argument('--engine', "-e", type=str, help='Engine to use')
-    parser.add_argument('--key', "-k", action='store_true', help='use the key')
+    #parser.add_argument('--key', "-k", action='store_true', help='use the key')
 
     parser.add_argument('--document', "-doc", action='store_true', help='search documents')
     parser.add_argument('--markup', "-mkp", action='store_true', help='search markup language')
@@ -308,14 +375,22 @@ def options():
         if args.engine in _config['CURRENT_ENGINES']:
             aux = "" + args.engine + _SEARCH_EXTENSION
             _config['ENGINE'] = _config['search_engine'][args.engine] + _config['search_engine'][aux]
+            if args.engine  == 'google_api':
+                if 'key' in _config['identity'] and 'cx' in _config['identity']  :
+                    _config['ENGINE'] += "key=" + _config['identity']['key'] + "&cx=" + _config['identity']['cx'] + "&q="
+                else:
+                    logger.error("key or cx not exists")
+                    print("key or cx not exits")
+                    exit(0)
         else:
             logger.error("engine :{} not implemented")
+            print (_config['CURRENT_ENGINES'])
+            exit (0)
 
     if args.query:
         _config['search_string'] =  args.query
     else:
         _config['search_string'] = 'test'
-
 
     if args.logging:
         if checkroute(_config['path']['log'],True):
@@ -326,7 +401,7 @@ def options():
 
     if args.config:
         logger.info("Getting data from configuration file {0}".format(args.config))
-        _config = config(args.config)
+
     if args.numpages :
         _config['numpages'] = args.numpages
     else:
@@ -338,10 +413,18 @@ def options():
     else:
         _config['VERBOSE'] = False
 
-    if args.readfile and not os.path.exists(args.readfile):
-        logger.error('File {0} not found'.format(args.readfile))
-    elif args.readfile:
-        _config['FILE'] = args.readfile
+    if args.readfile :
+        if len(args.readfile.split(" ")) > 1:
+            for file in args.readfile.split(" "):
+                if not os.path.exists(file):
+                    logger.error('File {0} not found'.format(args.readfile))
+                    exit(0)
+            _config['FILE'] = args.readfile
+        elif not os.path.exists(args.readfile):
+            logger.error('File {0} not found'.format(args.readfile))
+            exit(0)
+        else:
+            _config['FILE'] = args.readfile
 
     if args.json :
         _config['OUTPUT'] = _JSON
@@ -423,11 +506,6 @@ def options():
     if args.site and args.query:
         _config['search_string'] += " site:"+args.site
 
-    if 'key' in _config['identity'] and _config['identity']['key'] != 'empty' and args.key and _config['ENGINE'] == _config['search_engine']['google']:
-        _config['search_string'] +=  "&key=" + _config['identity']['key']
-    _url = _config['ENGINE'] + _config['search_string']
-
-
     if args.dorkfile and os.path.exists(args.dorkfile):
         _config['dorkfile'] = args.dorkfile
         _url = _config['ENGINE']
@@ -440,6 +518,7 @@ def options():
     else:
         _config['DELETE'] = True
 
+    _url = _config['ENGINE'] + _config['search_string']
 
     return _config, _url
 
@@ -471,6 +550,8 @@ def dork(_config, _url):
             _url = False
         except:
             pass
+    else:
+        _url = re.sub("/search\?q=","",_url)
     if _config['VERBOSE']:
         logger.debug('obtained URL: {0}'.format(_url))
         logger.debug('data saved in file: {0}'.format(name))
@@ -497,7 +578,16 @@ def dork_api(_config, _url, count):
     json_data = json.loads(response.text)
 
     cd = data_found()
-    cd.next_page= count*json_data['queries']['nextPage'][0]['count']
+    if 'queries' in json_data.keys():
+        if 'nextPage' in json_data['queries'].keys():
+            cd.next_page= count*json_data['queries']['nextPage'][0]['count']
+        else:
+            cd.next_page = 0
+    elif 'error' in json_data.keys():
+            logger.error(' {0}'.format(json_data))
+            print("\n\n{0}\n\n".format(json_data))
+            exit(0)
+
     #_url = _url + "&start=" + str(cd.next_page)
     # if _url is None:
     #     try:
@@ -521,12 +611,15 @@ def files2open(filename, _encoding='ISO-8859-1'):
     return doc, type
 
 def showfiles(_config, files):
-    cd = data_found()
+    if _config['ENGINE'] == 'https://www.google.com/search?q=':
+        cd = data_found()
+    else:
+        cd = data_found(None, 'API')
     if _config['VERBOSE']:
-        logger.debug("Files: {0}".find(str(files)))
+        logger.debug("Files: {0}".format(str(files)))
     for file in files:
         if _config['VERBOSE']:
-            logger.debug("Extracting data from: {0}".find(file))
+            logger.debug("Extracting data from: {0}".format(file))
         doc, type =  files2open(file)
         if type == "html":
             html = BeautifulSoup(doc, "html.parser")
@@ -538,6 +631,21 @@ def showfiles(_config, files):
                 cd.div_DATA(k,file)
         elif type == "json":
             json_data = json.loads(doc)
+            if 'kind' in json_data.keys():
+                if _config['VERBOSE']:
+                    logger.debug("url.template: {0}".format(
+                        json_data['url']['template']))
+                    logger.debug("queries.request.totalResults: {0}".format(
+                        json_data['queries']['request'][0]['totalResults']))
+                    logger.debug("queries.request.outputEncoding: {0}".format(
+                        json_data['queries']['request'][0]['outputEncoding']))
+                    logger.debug("queries.request.safe: {0}".format(
+                        json_data['queries']['request'][0]['safe']))
+                    logger.debug("context.title: {0}".format(
+                        json_data['context']['title']))
+                    logger.debug("searchInformation.totalResults: {0}".format(
+                        json_data['searchInformation']['totalResults']))
+
             for item in json_data['items']:
                 cd.add_data(None, None, None,None,None,item)
 
@@ -661,21 +769,24 @@ def manageoutput (_config, _data):
             with open(name, 'w', encoding='utf8') as json_file:
                 json.dump(_data.data, json_file, ensure_ascii=False)
             if _config['OUTPUT_AUX']:
-                pprint.pprint(_data.data)
+                print(json.dumps(_data.data))
         elif _config['OUTPUT'] == _CSV:
             name+=".csv"
             logger.info('Writing data in {0}'.format(name))
             if _config['VERBOSE']:
-                logger.debug('Keys found:{0}'.format(_data.keys()))
+                logger.debug('Keys found:{0}'.format(str(_data.keys())))
             csv_file = csv.writer(open(name, 'w'), delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            csv_file.writerow(_KEYS)
+            csv_file.writerow(_data.keys())
             if _config['OUTPUT_AUX']:
-                print(_KEYS)
+                print(_data.keys())
             for i in range(0, _data.current):
                 aux = _data.show(i)
                 _csv_data = []
-                for key in _KEYS:
-                    _csv_data.append(aux[key])
+                for key in  _data.keys():
+                    try:
+                        _csv_data.append(aux[key])
+                    except:
+                        _csv_data.append("")
                 csv_file.writerow(_csv_data)
                 if _config['OUTPUT_AUX']:
                     print(_csv_data)
@@ -689,12 +800,21 @@ if __name__ == "__main__":
     dt = datetime.datetime.now()
     _config, _url = options()
     logger.info('Starting {0} at {1}...'.format(NAME, dt))
-    if _config['VERBOSE']:
-        logger.debug('config: {0}'.format(_config))
+    #if _config['VERBOSE']:
+    #    logger.debug('config: {0}'.format(_config))
     if 'FILE' in _config:
-        file=showfiles(_config, [_config['FILE']])
+        # Para leer archivos
+        if _config['VERBOSE']:
+            logger.debug('Reading: {0}'.format([_config['FILE']]))
+        aux=[]
+        if len(_config['FILE'].split(" ")) > 1:
+            aux = _config['FILE'].split(" ")
+        else:
+            aux.append(_config['FILE'])
+        file=showfiles(_config, aux)
         downloaded_data(_config, file)
     elif 'dorkfile' in  _config:
+        # archivo con expresiones
         doc, type = files2open (_config['dorkfile'],'utf-8')
         linecount=0
         name=_config['dorkfile'].split("/")[len(_config['dorkfile'].split("/"))-1]
