@@ -35,8 +35,8 @@ optional arguments:
   --filter, -r          Include omitted results
   --site SITE, -s SITE  Site
   --socialmedia SOCIALMEDIA, -sm SOCIALMEDIA
-                        search in social media ie: twitter
-  --hashtag HASHTAG, -t HASHTAG
+                        search in -ssocial media ie: twitter
+  --hashtag HASHTAG, -t HASHTAGpic
                         search hashtags
   --dontdelete, -dd     keep tmp files, to use with --readfile
   --stdout, -stdout     shows json or csv output in stdout

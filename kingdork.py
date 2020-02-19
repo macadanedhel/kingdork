@@ -4,6 +4,7 @@ import argparse
 import datetime
 import configparser
 import requests
+from requests.adapters import TimeoutSauce
 import urllib
 import random
 import string
@@ -25,7 +26,7 @@ _JSON='json'
 _CSV='csv'
 _SCREEN = 'screen'
 _SEARCH_EXTENSION = '_search'
-
+REQUESTS_TIMEOUT_SECONDS = float(4)
 
 
 logger = logging.getLogger(NAME)
@@ -288,6 +289,14 @@ def checkroute(route:str, create=False):
 #         exit(0)
 
 def config(file=None):
+    class CustomTimeout(TimeoutSauce):
+        def __init__(self, *args, **kwargs):
+            if kwargs["connect"] is None:
+                kwargs["connect"] = REQUESTS_TIMEOUT_SECONDS
+            if kwargs["read"] is None:
+                kwargs["read"] = REQUESTS_TIMEOUT_SECONDS
+            super().__init__(*args, **kwargs)
+
     _configdata = {}
     if file is None:
         file = configfile
@@ -312,7 +321,8 @@ def config(file=None):
 
     _configdata['ENGINE'] = _configdata['search_engine']['google'] + _configdata['search_engine']['google_search']
     _configdata['CURRENT_ENGINES'] = _configdata['search_engine']['engines'].split(',')
-
+    REQUESTS_TIMEOUT_SECONDS = float(_configdata['connection']['timeout'])
+    requests.adapters.TimeoutSauce = CustomTimeout
     return _configdata
 
 def options():
@@ -721,7 +731,12 @@ def download_data (_config, _key, name):
                     ua = {
                         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36'}
                     #response = _conn.get(i['link'], headers=ua)
-                    response = requests.get(i['link'], headers=ua)
+                    try:
+                        response = requests.get(i['link'], headers=ua)
+                    except Exception as ex:
+                        logger.error("Error accessing {0}: {1}".format(i['link'],str(ex)))
+
+
                     if _config['VERBOSE']:
                         mgmt_response(response.headers)
                     logger.info("File {0} downloaded".format(_aux))
@@ -734,7 +749,11 @@ def download_data (_config, _key, name):
                 ua = {
                     'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36'}
                 #response = _conn.get(i['link'], headers=ua)
-                response = requests.get(i['link'], headers=ua)
+                try:
+                    response = requests.get(i['link'], headers=ua)
+                except Exception as ex:
+                    logger.error("Error accessing {0}: {1}".format(i['link'], str(ex)))
+
                 if _config['VERBOSE']:
                     mgmt_response(response.headers)
                 #logger.info("File {0} downloaded".format(_aux))
